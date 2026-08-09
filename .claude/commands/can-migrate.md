@@ -263,67 +263,86 @@ Then give a specific, falsifiable condition that would change the answer ("es-to
 
 **If a PR or issue already proposes this, draft nothing** — even at 90. Report its state and what it's blocked on, and recommend *supporting* it: a review, a reproduction of its numbers, a fix for the objection raised.
 
-### Hard rule: 20 lines maximum
+### Write a message, not a document
 
-Count them. A long proposal reads as a pitch and gets skimmed; a short one with real numbers gets read. Cut in this order: prose → tables → adjectives. **No tables** — this format is too short to earn one. Numbers inline, bolded.
+**This is one person asking another person a question.** It is not a report, a proposal deck, or a changelog entry. A maintainer reading it should hear a contributor who looked at their code — not a template that got filled in.
 
-Every draft carries at least one caveat (surviving transitive lodash, install growth, diff size, hand fixes). Stating it unprompted is what separates a proposal from a pitch.
+Hard rules:
 
-### Template A — issue / PR description
+- **20 lines maximum.** Count them.
+- **No section headers.** No `## Summary`, no `## Test plan`, no `## Motivation`. Headers are for documents.
+- **No bullet lists and no tables.** Prose paragraphs. A bulleted benefit list is the single strongest AI tell in this format.
+- **Numbers live inside sentences.** "brought it from 56.4 kB to 48.2 kB gzip, about 14% smaller" — not "**Bundle size**: −14.6%". Bold nothing, or almost nothing.
+- **Open with an observation or the ask.** Never with a title or a restatement of what the PR does.
+- **Close with a real question.** "What do you think?" / "Would you be open to…" An issue that ends in a period reads as a decision announced.
+- **At least one volunteered caveat, in its own paragraph, with a concession attached.** Naming the tradeoff *and* offering to scope the change down ("leaving the CLI on lodash would be reasonable") is what separates a proposal from a pitch.
+
+### Verify the premise before asserting it
+
+The fastest way to lose a maintainer is to describe their codebase wrong in the first sentence. Before writing, re-check Step 2-3:
+
+- **Do not call it "CJS lodash" if they use `lodash-es`.** `lodash-es` is ESM and already tree-shakes. Say which packages use which.
+- **Do not claim speed, performance, or "modern" anything.** Step 4 does not benchmark runtime. An unmeasured claim discredits the measured ones next to it.
+- **Do not cite es-toolkit adoption by other projects** unless the maintainer asks. It reads as marketing.
+
+### The shape that works
+
+Five short paragraphs, in this order:
+
+1. **The ask, in one line.** "Would you be open to swapping lodash for es-toolkit?"
+2. **Something they may not know about their own repo**, then the number it produces. The duplicate-bundle finding, the CJS copy pulled in through a workspace package, the `@types` dep sitting in `dependencies`. This is what proves you read the code rather than the README, and it is the paragraph that earns the rest of the message.
+3. **The secondary benefit**, one or two sentences.
+4. **Verification**, stated plainly with the baseline: "2,545 passed, 0 failed (common's 980 is identical to before)."
+5. **The tradeoff and the concession**, then the question.
 
 ````markdown
-## Summary
+Would you be open to swapping lodash for es-toolkit?
 
-Replaces `lodash` with `es-toolkit/compat` across <N> files in <M> packages.
-Drop-in: same API, same behavior, no call-site changes.
+I noticed <specific thing you found in their code> — <one clause on why it happens>.
+Consolidating on es-toolkit brought `<artifact>` from <before> to <after> gzip, about
+<Y>% smaller.
 
-- **Bundle size**: `<artifact>` gzip **<before> → <after>** (−<X> kB, −<Y>%)
-- **Dependencies**: drops `lodash` and `@types/lodash` — es-toolkit ships its own types
-- **Maintenance**: es-toolkit is actively maintained; already used by Storybook and Recharts
+It also cleans up the type deps — es-toolkit ships its own types, so <N> `@types/lodash*`
+entries drop out across the <M> packages.
 
-```diff
-- import { cloneDeep } from 'lodash'
-+ import { cloneDeep } from 'es-toolkit/compat'
-```
+I ran the suites after swapping: <N> passed, 0 failed (<pkg>'s <N> is identical to
+before), and builds + typecheck were fine. It's a one-line change per import.
 
-## Test plan
+One tradeoff worth mentioning: <the honest cost>. That's <who it does not affect> but a
+real cost for <who it does>, so <the scoped-down alternative> would be reasonable.
 
-`<command>` → **<N> passed, 0 failed** — identical to the pre-change baseline.
-
-Caveats: <transitive lodash survives / install +<X> MB / <N>-file diff>.
+What do you think?
 ````
 
-### Template B — reply to a maintainer's pushback
+### Replying to pushback
 
 Only when Step 3 says you have **new evidence answering their stated objection**. Without it, do not reply — re-pitching is not a contribution.
 
+Same rules as above, plus: name their objection in their words and concede what is true about it before adding anything. Then give the one number that is genuinely new, the tradeoff you still carry, and an exit that costs them nothing to take.
+
 ````markdown
-Thanks for the thoughtful response — the concern about <their exact objection> is fair.
-A few numbers that may shift the cost-benefit:
+Thanks for the thoughtful response — the concern about <their exact objection> is fair,
+and <the part of it that is simply true>.
 
-**1. <Benefit> for <who>**
-<before> → <after> (**−<Y>%**), affecting <the specific consumer>.
+The one thing I'd add: <the new measurement, in a sentence with the number in it>.
+<Who collects that benefit, concretely.>
 
-**2. Zero-risk swap** — same API, same behavior, <N> tests pass unchanged.
+<The tradeoff you are still carrying, stated plainly.>
 
-```diff
-- import { throttle } from 'lodash'
-+ import { throttle } from 'es-toolkit/compat'
-```
-
-**3. <Maintenance / type surface / dependency count>**
-<one concrete sentence>. <Caveat you are not hiding.>
-
-Fair enough if this still reads as unnecessary churn — but would you be open to
-reconsidering? Thanks for maintaining <project>.
+Totally fine if this still reads as unnecessary churn — happy to drop it. Thanks for
+maintaining <project>.
 ````
 
 ### Tone
 
-Friendly, respectful, a suggestion rather than a demand. Persuasive without reading as promotional for es-toolkit. Disclose any es-toolkit affiliation. Adjust for Step 3 signals: low activity → gentler, acknowledge the maintenance load; CLA → mention it honestly; prior failed attempts → acknowledge and respect that context.
+Friendly, a suggestion rather than a demand, and specific enough that it could only have been written about this repository. Never promotional for es-toolkit; disclose any affiliation. Adjust for Step 3 signals: low activity → gentler, acknowledge the maintenance load; CLA → mention it honestly; prior failed attempts → acknowledge and respect that context.
+
+Hedge where hedging is honest ("seems to pull the second copy in") and state measured facts firmly. Hedging a number you actually measured is its own kind of dishonesty.
 
 ---
 
 ## Response Language
 
-Use the `response-language` argument (ISO 639-1). Default `en`. **The 20-line cap and both templates apply in every language** — issue drafts stay in English unless the repository's own issues are not.
+Use the `response-language` argument (ISO 639-1) for the report. Default `en`.
+
+**Step 6 drafts stay in English** unless the repository's own issues are not — the message goes to maintainers, not to the user. All Step 6 rules (20 lines, no headers, no bullets, verified premise, volunteered caveat) apply in whatever language it ends up in.
