@@ -1,0 +1,7 @@
+interface:
+  display_name: "Can Migrate to es-toolkit"
+  short_description: "Assess lodash-to-es-toolkit migration feasibility"
+  default_prompt: "Use $can-migrate-es-toolkit to assess whether this GitHub repository should migrate from lodash to es-toolkit."
+
+policy:
+  allow_implicit_invocation: true

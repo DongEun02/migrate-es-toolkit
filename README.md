@@ -1,6 +1,6 @@
 # can-migrate-es-toolkit
 
-A Claude Code skill that analyzes GitHub repositories to determine whether their lodash dependency can be migrated to [es-toolkit](https://github.com/toss/es-toolkit).
+A Claude Code and Codex skill that analyzes GitHub repositories to determine whether their lodash dependency can be migrated to [es-toolkit](https://github.com/toss/es-toolkit).
 
 ## What it does
 
@@ -27,13 +27,34 @@ Steps 3–6 are skipped entirely when Step 2 terminates. A repository with no mi
 
 ## Installation
 
-### From `.skill` file
+### Codex
+
+Clone the repository and launch Codex from anywhere inside it. Codex automatically discovers the repository-scoped skill under `.agents/skills`.
+
+For personal use across repositories, symlink the skill so the Codex adapter can continue sharing the canonical workflow and scripts from this checkout.
+
+```bash
+mkdir -p ~/.agents/skills
+ln -s /absolute/path/to/can-migrate-es-toolkit/.agents/skills/can-migrate-es-toolkit \
+  ~/.agents/skills/can-migrate-es-toolkit
+```
+
+Invoke it with:
+
+```text
+$can-migrate-es-toolkit https://github.com/org/repo
+$can-migrate-es-toolkit https://github.com/org/repo ko
+```
+
+### Claude Code
+
+#### From `.skill` file
 
 ```bash
 claude install-skill can-migrate-es-toolkit.skill
 ```
 
-### Manual
+#### Manual
 
 Copy this directory into your Claude Code skills directory:
 
@@ -41,7 +62,7 @@ Copy this directory into your Claude Code skills directory:
 cp -r can-migrate-es-toolkit ~/.claude/skills/can-migrate-es-toolkit
 ```
 
-## Usage
+## Claude Code usage
 
 ```
 /can-migrate-es-toolkit https://github.com/org/repo
@@ -94,6 +115,12 @@ It measures the **lodash slice only** — the bytes that leave a consumer's bund
 
 Functions missing from `es-toolkit/compat` are reported and excluded from the measurement. This is an empirical blocker check, so it catches gaps the fixed hard-blocker list does not.
 
+`lodash/fp` imports are reported separately as manual-rewrite warnings. They do not
+trigger an automatic hard blocker: the affected call sites must be rewritten and
+verified in Tier 1. For browser projects with transitive lodash, the synthetic slice
+is only a lead — the final baseline and migrated production artifacts decide whether
+consumers actually save bytes.
+
 ### `scripts/migrate_lodash_imports.py`
 
 Replaces lodash imports with `es-toolkit/compat` equivalents. Used in Step 4, Tier 1.
@@ -124,7 +151,7 @@ A clean Tier 2 run proves the migration is *safe*, not that it is *worth doing*.
 
 ## Requirements
 
-- Claude Code CLI
+- Codex or Claude Code CLI
 - Python 3.9+ (for the bundled scripts)
 - `node` and `npm` (for `measure_bundle_size.py`)
 - `gh` CLI — optional. Used for GitHub API queries in Step 3; falls back to web fetches when unavailable

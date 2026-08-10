@@ -92,12 +92,19 @@ Also check:
 | Named (ESM) | `import { pick } from 'lodash-es'` | Already tree-shakes. Benefit is per-function size only |
 | Subpath | `import pick from 'lodash/pick'` | Already optimized. Smaller gain |
 | Per-method pkg | `import throttle from 'lodash.throttle'` | **Already optimal** — standalone, zero deps. Migration adds install weight and removes almost nothing. Strong negative signal unless browser-bundled |
+| Functional | `import set from 'lodash/fp/set'` | No drop-in es-toolkit API. Record it separately and budget a manual semantic rewrite in Tier 1 |
 
 Record: file and import count per pattern, distinct function count, top functions by frequency. Flag scope of 40+ files — large PRs stall in review.
 
 ### 2-4. Hard blockers
 
 Any of `sortedUniq`, `sortedUniqBy`, `mixin`, `noConflict`, `runInContext` → **terminate immediately**: "Hard blocker found".
+
+`lodash/fp` is **not automatically a hard blocker**. Its data-last, auto-curried,
+immutable behavior needs a manual rewrite, so carry it into Tier 1 and verify the
+affected behavior. Apply condition C only when a function that must remain a direct
+compatibility substitution is absent from `missing_from_compat`, or when a targeted
+code check proves the manual rewrite is not feasible.
 
 ### 2-5. Early termination
 
@@ -109,7 +116,7 @@ Terminate with **"No migration rationale"** if **any one** holds:
 |---|---|---|
 | A | lodash only in `devDependencies`, or only under test/docs/example/script paths | Nothing reaches a user |
 | B | Never browser-bundled **and** usage already minimal (per-method pkgs, a few subpath imports) **and** Tier 0 shows an install regression | No byte reaches a consumer, and the only applicable metric gets worse. The `react/metro` shape |
-| C | A function in use is missing from `es-toolkit/compat` | Impossible, not merely unwise |
+| C | A required direct-substitution function appears in Tier 0 `missing_from_compat`, and no small semantics-preserving call-site rewrite exists | Impossible, not merely unwise |
 
 **Do not terminate** if any of these survive — they outlive the bundle argument:
 
@@ -167,7 +174,17 @@ Extracts distinct functions from **shipped** source (`--include-tests` to widen)
 
 This is the **lodash slice only** — not the app's total bundle. Report it that way.
 
-Tier 0 alone caps the score in the 70s. A function missing from compat is a 2-4 hard blocker.
+Treat `warnings` separately from `missing_from_compat`. In particular, a
+`lodash/fp` warning means "manual Tier 1 work required," not "terminate under
+condition C." Do not turn a warning into a hard blocker without the targeted code
+check required by Step 2-5.
+
+**A synthetic saving is not a net application saving.** If the lockfile contains
+transitive lodash, determine whether that copy survives in the production artifact.
+The direct-import slice can shrink while the final bundle grows because another
+dependency keeps lodash and es-toolkit is added beside it.
+
+Tier 0 alone caps the score at 69. A function missing from compat is a 2-4 hard blocker only under the clarified condition C above.
 
 ### Tier 1 — Codemod smoke test (~1 min)
 
@@ -176,14 +193,34 @@ Only when Tier 0 says candidate and you intend to recommend it. Preflight first 
 1. `{skill_directory}/scripts/migrate_lodash_imports.py <clone-dir>` — `--dry-run`, then `--write`
 2. Swap `lodash`/`lodash-es` → `es-toolkit` in every affected `package.json` (parse JSON, don't regex), install
 3. Run the test suite of the **single package with the most lodash imports**
+4. For browser-bundled projects, run at least one production build before calling
+   Tier 1 green. A unit-test-only result cannot catch bundler resolution failures.
 
 **A clean dry-run is not verification.** It counts import statements; it executes nothing. A named export bound as a default, or a dropped alias, fails at runtime, not at import time.
 
 Record every hand fix the codemod missed — that is the honest cost, and maintainers will hit it too. Common: mock paths still pointing at lodash (`vi.mock('lodash/uniqueId')`), stale or newly-necessary `@ts-expect-error`.
 
+For each `lodash/fp` file the codemod skips, rewrite the call site manually while
+preserving currying, argument order, and mutation behavior. Do not remove lodash
+from `package.json` while any shipped `lodash/fp` import remains.
+
+If the compat barrel import breaks the target's production bundler, test function-level
+deep imports and record that as a required hand fix. A dry-run or passing unit suite
+does not override a failed production build.
+
 ### Tier 2 — Full verification (only when drafting in Step 6)
 
 Full build + full test suite across packages; run typecheck if it exists. **Capture the baseline run too** (Execution Rule 3) — "N passed" only means something against a before-number. Report exact counts.
+
+For browser-bundled projects, compare the same production artifacts from `base/` and
+`migrated/`: raw/minified bytes as applicable, gzip bytes, and the exact delta. When
+transitive lodash exists, inspect both artifacts for evidence that lodash survived.
+If lodash remains and es-toolkit is added beside it, score the net artifact delta —
+not the synthetic direct-import slice. A net size regression caps the score at 29.
+
+This artifact comparison is mandatory before recommending a browser migration when
+either (a) transitive lodash exists, (b) lodash cannot be removed from installation,
+or (c) bundle-size benefit is the main rationale.
 
 A real behavioral difference outranks every other signal — report it prominently and cap the score below 50. But separate two things:
 
@@ -346,3 +383,44 @@ Hedge where hedging is honest ("seems to pull the second copy in") and state mea
 Use the `response-language` argument (ISO 639-1) for the report. Default `en`.
 
 **Step 6 drafts stay in English** unless the repository's own issues are not — the message goes to maintainers, not to the user. All Step 6 rules (20 lines, no headers, no bullets, verified premise, volunteered caveat) apply in whatever language it ends up in.
+
+## Required Report Structure
+
+Use this exact top-level order so runs from different agents are comparable. Localize
+the prose to the requested response language, but preserve the English verdict label
+in parentheses.
+
+```markdown
+can-migrate-es-toolkit — <owner/repo>
+
+분석 대상: <branch/tag> @ <version-or-commit> (<recency>)
+
+결론: <score> / 100 — <localized verdict> (<English verdict label>)
+
+<one paragraph naming the decisive reason and the measured recipient or regression>
+
+<explicit action: open or do not open an issue/PR>
+
+---
+Step 1 — Gate Check
+<result>
+
+Step 2 — Migration Target Assessment
+<2-1 through 2-5, including the provisional verdict>
+
+Step 3 — Organizational Signals
+<results, or one line saying why skipped>
+
+Step 4 — Measure and Verify
+<Tier 0, Tier 1, Tier 2 with exact raw numbers; mark unrun tiers unmeasured>
+
+Step 5 — Final Score
+<deductions and the three sanity-check answers>
+
+Step 6 — Issue Draft
+<draft, existing issue/PR state, or one line saying why skipped>
+```
+
+Do not rename `Step` to `Stage`, omit reached steps, or collapse the report into a
+short summary. When an early gate terminates the run, keep the same headings and mark
+all later steps as skipped with the gate reason.
