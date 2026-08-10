@@ -80,8 +80,9 @@ RE_REQ_DEFAULT = re.compile(
 RE_DOT_PKG = re.compile(
     r"""(?:from|require\s*\(\s*)\s*['"]lodash\.([a-z][a-z0-9]*)['"]"""
 )
-# lodash/fp has no es-toolkit equivalent
-RE_FP = re.compile(r"""['"]lodash(?:-es)?/fp(?:/\w+)?['"]""")
+# lodash/fp needs a semantic rewrite rather than a direct import substitution.
+# Capture the function so the caller can budget each manual conversion.
+RE_FP = re.compile(r"""['"]lodash(?:-es)?/fp(?:/(\w+))?['"]""")
 
 # Doc comments routinely contain example import paths (`from 'lodash/xxxx'`),
 # which would otherwise be counted as real usage.
@@ -100,6 +101,21 @@ def strip_comments(content: str) -> str:
 
 def is_shipped(rel_path: str) -> bool:
     posix = rel_path.replace(os.sep, '/')
+    parts = posix.split('/')
+
+    # A source directory can legitimately contain domain modules named `spec`
+    # (for example Swagger UI's `src/core/plugins/spec`).  Treat explicit test
+    # directories and test-file suffixes under src as non-shipped, but do not
+    # apply the broad repository-level `spec` heuristic to source modules.
+    if 'src' in parts:
+        src_index = parts.index('src')
+        source_dirs = set(parts[src_index + 1:-1])
+        test_dirs = {
+            'test', 'tests', '__tests__', '__mocks__', 'e2e', 'cypress',
+            'fixtures', 'bench', 'benchmark', 'benchmarks',
+        }
+        return not (source_dirs & test_dirs or NON_SHIPPED_FILE.search(posix))
+
     return not (NON_SHIPPED.search(posix) or NON_SHIPPED_FILE.search(posix))
 
 
@@ -158,8 +174,12 @@ def extract_functions(
         if 'lodash' not in content:
             continue
 
-        if RE_FP.search(content):
-            warnings.append(f'{p}: uses lodash/fp — no es-toolkit equivalent')
+        fp_functions = sorted({m.group(1) or '*' for m in RE_FP.finditer(content)})
+        if fp_functions:
+            warnings.append(
+                f'{p}: uses lodash/fp ({", ".join(fp_functions)}) — manual semantic '
+                'rewrite required; this warning alone is not a Condition C blocker'
+            )
 
         for m in RE_SUBPATH.finditer(content):
             bump(m.group(1))

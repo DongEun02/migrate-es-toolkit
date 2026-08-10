@@ -115,6 +115,12 @@ It measures the **lodash slice only** — the bytes that leave a consumer's bund
 
 Functions missing from `es-toolkit/compat` are reported and excluded from the measurement. This is an empirical blocker check, so it catches gaps the fixed hard-blocker list does not.
 
+`lodash/fp` imports are reported separately as manual-rewrite warnings. They do not
+trigger an automatic hard blocker: the affected call sites must be rewritten and
+verified in Tier 1. For browser projects with transitive lodash, the synthetic slice
+is only a lead — the final baseline and migrated production artifacts decide whether
+consumers actually save bytes.
+
 ### `scripts/migrate_lodash_imports.py`
 
 Replaces lodash imports with `es-toolkit/compat` equivalents. Used in Step 4, Tier 1.

@@ -27,6 +27,9 @@ Treat the shared file as the canonical workflow. Apply these Codex-specific mapp
 
 - Run the migration gate and early-termination checks before organizational research.
 - Run Tier 0 before making any size-based claim.
+- Treat `lodash/fp` warnings as manual Tier 1 work, not automatic condition C blockers.
+- For browser bundles with transitive lodash, compare baseline and migrated production artifacts before recommending migration.
 - Do not draft an issue when the shared workflow says to skip it.
 - Report exact measurements and verification levels; do not imply an unrun tier passed.
+- Use the shared workflow's `Required Report Structure` exactly, including every Step heading and skipped-step marker.
 - Respond in the requested language while preserving the workflow's required English verdict labels verbatim.
