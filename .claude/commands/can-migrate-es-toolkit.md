@@ -240,6 +240,7 @@ This is one person asking another person a question. Warm, suggesting rather tha
 - **Introduce es-toolkit in three lines or fewer**, leading on bundle size and speed.
 - **Prove the benefit with one number, inside a sentence.** No breakdown, no second and third statistic — one figure a maintainer can hold in their head.
 - **Name who gains**: their users, concretely.
+- **Let a small number carry its weight.** A modest delta is not a weak argument — it is collected on every install, every build, and every page load, and it stacks with the other small wins that keep a project lean. Attach that as one clause to the number, in the maintainer's own terms. One clause, not a paragraph, and never inflate the figure to make the point.
 - **Say what adopting costs**, in one sentence, from the tier you reached. This is what turns a suggestion into something a maintainer can say yes to.
 - **Close warmly, on a question.**
 
@@ -251,6 +252,7 @@ Do not:
 - **Claim more than the tier you reached.** Tier 1 ran nothing: say the diff is mechanical and note you haven't run their suite. Only a completed Tier 2 earns "I ran the tests," with the before-number beside it.
 - **Present an upper bound as a saving.** With transitive lodash, say the bytes leave only if lodash leaves, and name the dependency holding it. The maintainer owns the build and will check.
 - **Call it "CJS lodash" if they use `lodash-es`.** Describing their codebase wrong in the first sentence loses them immediately.
+- **Refer to a previous attempt.** If Step 3 turned up an earlier issue or PR on this — closed, rejected, or abandoned — the draft never mentions it: no "I saw #123 didn't land," no "unlike the earlier attempt," no summary of why it stalled. That turns the message into a re-litigation of a settled thread instead of a proposal. Prior art decides the score and the evidence you bring; it stays out of the text. Write it so it reads to someone meeting the idea for the first time.
 - **Cite es-toolkit adoption by other projects** — it reads as marketing. Disclose any affiliation.
 
 ```markdown
@@ -262,7 +264,8 @@ It also ships its own TypeScript types, so no separate `@types` package is neede
 
 I noticed <the specific thing you found in their repo> — <one clause on why it happens>.
 Swapping to es-toolkit brings that slice from <before> to <after> gzip, about <Y>%
-smaller, so every app built on <repo> would carry that much less.
+smaller — small on its own, but it's carried by every app built on <repo>, on every
+build, and it's the kind of trim that adds up.
 
 <the cost sentence — by tier, below>
 
