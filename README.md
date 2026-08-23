@@ -9,19 +9,19 @@ Given a GitHub repository URL, this skill:
 1. **Gate check** — Detects whether lodash exists in any `package.json`
 2. **Target assessment** — Analyzes project type, bundle inclusion, import patterns, and hard blockers, then applies an early-termination gate: if no migration rationale survives, the skill stops here and reports
 3. **Organizational signals** — Checks repo activity, prior migration attempts, CLA requirements
-4. **Measure & verify** — Measures the bundle-size delta and verifies the migration actually builds and passes tests, in escalating tiers
+4. **Measure & verify** — Measures the bundle-size delta and, for strong candidates only, applies the migration and runs the target's build and test suite
 5. **Report** — Produces a scored (1–100) migration feasibility report
-6. **Issue draft** — Generates a GitHub issue description for high-scoring candidates
+6. **Issue draft** — Generates a GitHub issue description for candidates scoring 50+
 
-Step 4 runs in tiers so cost tracks confidence:
+Step 4 runs in tiers so that cost tracks how promising the repository already looks:
 
-| Tier | Cost | What it produces |
-|------|------|------------------|
-| 0 — synthetic measurement | seconds, no repo install | bundle-size delta, install-footprint delta, empirical `es-toolkit/compat` coverage check |
-| 1 — codemod smoke test | ~1 min | migration applied, largest package's tests run |
-| 2 — full verification | minutes | full build + full test suite across all packages |
+| Tier | Cost | Entry condition | What it produces |
+|------|------|-----------------|------------------|
+| 0 — synthetic measurement | seconds, no install | always | bundle-size delta, install-footprint delta, empirical `es-toolkit/compat` coverage check |
+| 1 — codemod shape | seconds, no install | Tier 0 says candidate | diff size, the fraction that is one-line import rewrites, every hand fix the codemod cannot do |
+| 2 — full verification | **minutes to an hour** | provisional score ≥ 70, and you intend to propose it | baseline vs migrated build, full test suite, production artifact comparison |
 
-Tier 0 always runs — Step 2's termination gate invokes it, so a size-based no-go is always measured rather than assumed. Tiers 1 and 2 are entered only when the score justifies them. Scores of 70+ require measurement; static analysis alone caps at 69.
+**Tier 2 is the expensive one, and most runs must never reach it.** Verifying a migration you are about to argue against costs an hour and buys nothing, so a no-go verdict never earns a Tier 2 run — the gate is a provisional score written down *before* the first `install`. Tiers 0 and 1 alone cap the score at 69: a measured benefit plus a mechanical diff is still an untested change, and the issue draft says exactly that.
 
 Steps 3–6 are skipped entirely when Step 2 terminates. A repository with no migration rationale gets a two-minute answer, not an hour of organizational research.
 
@@ -116,14 +116,17 @@ It measures the **lodash slice only** — the bytes that leave a consumer's bund
 Functions missing from `es-toolkit/compat` are reported and excluded from the measurement. This is an empirical blocker check, so it catches gaps the fixed hard-blocker list does not.
 
 `lodash/fp` imports are reported separately as manual-rewrite warnings. They do not
-trigger an automatic hard blocker: the affected call sites must be rewritten and
-verified in Tier 1. For browser projects with transitive lodash, the synthetic slice
-is only a lead — the final baseline and migrated production artifacts decide whether
-consumers actually save bytes.
+trigger an automatic hard blocker, but they are unverified manual cost the report has to
+name.
+
+When the lockfile shows transitive lodash, the reported delta is an **upper bound, not a
+saving** — another dependency may keep its own lodash copy, in which case es-toolkit is
+added beside it and the shipped bundle grows. The skill reports it that way, names the
+dependency responsible, and scores the benefit as unproven rather than found.
 
 ### `scripts/migrate_lodash_imports.py`
 
-Replaces lodash imports with `es-toolkit/compat` equivalents. Used in Step 4, Tier 1.
+Replaces lodash imports with `es-toolkit/compat` equivalents. Used in Step 4, Tier 1 — it is pure source transformation, so it runs in seconds and never installs anything.
 
 ```bash
 # Preview changes
@@ -143,11 +146,11 @@ Handles ES module imports, CommonJS requires, subpath imports, namespace imports
 |-------|---------|
 | 0–29 | Hard blocker; lodash never reaches end users; the benefit does not apply; or the net size effect is a regression |
 | 30–49 | Technically possible but major organizational barriers or very large scope |
-| 50–69 | Feasible but limited benefit, or measurement stopped at Tier 0 |
-| 70–89 | Good conditions with a measured benefit (Tier 0 minimum, Tier 1 green) |
-| 90–100 | Excellent — narrow scope, active repo, Tier 2 green, minimal risk |
+| 50–69 | Feasible, with a measured benefit that reaches someone — but stopped at Tier 1, so untested |
+| 70–89 | Good conditions, a measured benefit, and a green Tier 2 |
+| 90–100 | Excellent — narrow scope, active repo, Tier 2 green including a production build, minimal risk |
 
-A clean Tier 2 run proves the migration is *safe*, not that it is *worth doing*. When the benefit reaches nobody (a Node-only project that is never bundled) or the net size effect is a regression, the score belongs in 0–29 however green the verification. Before citing a number as an upside, name who collects it.
+70+ requires a completed Tier 2; Tiers 0–1 cap at 69 however clean the code looks. A green Tier 2 run proves the migration is *safe*, not that it is *worth doing* — when the benefit reaches nobody (a Node-only project that is never bundled) or the net size effect is a regression, the score belongs in 0–29 however green the verification. Before citing a number as an upside, name who collects it.
 
 ## Requirements
 
