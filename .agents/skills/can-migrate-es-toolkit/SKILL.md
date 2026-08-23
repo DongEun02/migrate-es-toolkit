@@ -11,7 +11,7 @@ Accept a GitHub repository URL and an optional ISO 639-1 response language. Defa
 
 1. Resolve the real path of the directory containing this `SKILL.md`, following symlinks. Call it `<skill-directory>`.
 2. Resolve `<source-root>` as three directories above `<skill-directory>`.
-3. Read `<source-root>/.claude/commands/can-migrate.md` completely before starting the assessment.
+3. Read `<source-root>/.claude/commands/can-migrate-es-toolkit.md` completely before starting the assessment.
 4. Follow its gates, scoring rules, verification tiers, and report requirements in order.
 
 Treat the shared file as the canonical workflow. Apply these Codex-specific mappings while following it:
