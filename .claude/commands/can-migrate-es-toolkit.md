@@ -204,11 +204,32 @@ A real behavioral difference outranks every other signal — report it prominent
 | ------ | ------------------------ | ------------------------------------------------------------------------------------------- |
 | 0–29   | **Do not migrate**       | Hard blocker; lodash never reaches users; benefit doesn't apply; net size regression        |
 | 30–49  | **Not recommended**      | Possible, but major organizational barriers or very large scope                             |
-| 50–69  | **Marginal**             | Feasible, with a measured benefit that reaches someone — but stopped at Tier 1, so untested |
+| 50–69  | **Marginal**             | The benefit reaches someone but is thin, unconfirmed in sign, or offset by scope or organizational barriers |
 | 70–89  | **Recommended**          | Good conditions, a measured benefit, and a green Tier 2                                     |
 | 90–100 | **Strongly recommended** | Narrow scope, active repo, Tier 2 green including a production build, minimal risk          |
 
-- **70+ requires a completed Tier 2.** Tiers 0–1 cap at 69 however clean the code looks. Never award 70+ on the intention to verify.
+**Start from who collects the bytes, then adjust.** This is not a checklist of deductions with no origin. Set a base from 2-2 and Tier 0, then apply the adjustments.
+
+| Base  | When                                                                                                                                                                    |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 75    | Tier 0 measured a gzip reduction in code that reaches a **browser bundle** — the project's own users, or the downstream apps of a published library, collect it on every load |
+| 65    | Shipped to browsers, but already tree-shaken (`lodash-es`, subpath) so the per-function delta is small                                                                   |
+| 40    | Shipped only to Node consumers — install footprint is the only metric that applies                                                                                       |
+| 0–29  | A Step 2-5 termination: no recipient, hard blocker, or net regression                                                                                                   |
+
+**A small saving is not a weak benefit.** Bytes off a shipped bundle are collected by every user on every load, permanently, and they compound with every other trim the maintainer makes. Deduct for a benefit **nobody collects**, a delta whose **sign you cannot establish**, or numbers you did not measure — never for a real saving being modest.
+
+Adjust from the base:
+
+- **+10** a large non-tree-shakeable surface (namespace or CJS named imports), or lodash in `dependencies` of several published packages
+- **+5** build machinery the swap deletes (module-format shims, dual `lodash` + `lodash-es` pairs, a separate `@types/lodash`)
+- **−10** scope of 40+ files, or an active plugin/public-API exposure needing a shim
+- **−10 to −20** organizational barriers: inactive repo, CLA, an unanswered maintainer rejection
+- Caps still bind over everything above: 29 on a net size regression, below 50 on an upper-bound-only rationale or a real behavioral difference
+
+Then apply the scoring rules:
+
+- **70+ requires a completed Tier 2.** Tiers 0–1 cap the *final* score at 69 however clean the code looks; never award 70+ on the intention to verify. The **provisional** score is a different number and is not capped — it is scored on benefit alone from the base above, and a provisional 70+ is precisely what **obliges** you to run Tier 2. Stopping at Tier 1 with a provisional 75 and reporting 65 is a skipped step, not a verdict: run Tier 2, or state why you could not and report both numbers.
 - **Green verification is not a benefit.** A passing suite proves the change is *safe*, not *worth doing*. A flawless Tier 2 run on a pointless change scores 0–29.
 - **Score the benefit that reaches someone.** Name who collects it. "Nobody, it's never bundled" makes the number worth zero.
 - **Cap at 29 on a net size regression**; **cap below 50 when the delta is an upper bound and size is the only rationale**, unless Tier 2 settled the sign.
