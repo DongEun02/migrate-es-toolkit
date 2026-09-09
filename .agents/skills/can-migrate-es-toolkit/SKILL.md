@@ -1,6 +1,6 @@
 ---
 name: can-migrate-es-toolkit
-description: Analyze a GitHub repository to determine whether its lodash dependency can be migrated to es-toolkit. Use when the user asks whether a specific repository can replace lodash or lodash-es with es-toolkit, wants migration feasibility or risk assessed, or wants a GitHub issue proposal for removing lodash.
+description: Analyze a GitHub repository to determine whether migrating its lodash dependency to es-toolkit is worthwhile and feasible. Use when the user asks whether a specific repository can replace lodash or lodash-es with es-toolkit, or wants migration benefits, risks, and readiness assessed. Produces an assessment only; issue drafting is outside this skill.
 ---
 
 # Assess lodash-to-es-toolkit migration

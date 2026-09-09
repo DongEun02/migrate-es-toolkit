@@ -10,8 +10,9 @@ Given a GitHub repository URL, this skill:
 2. **Target assessment** — Analyzes project type, bundle inclusion, import patterns, and hard blockers, then applies an early-termination gate: if no migration rationale survives, the skill stops here and reports
 3. **Organizational signals** — Checks repo activity, prior migration attempts, CLA requirements
 4. **Measure & verify** — Measures the bundle-size delta and, for strong candidates only, applies the migration and runs the target's build and test suite
-5. **Report** — Produces a scored (1–100) migration feasibility report
-6. **Issue draft** — Generates a GitHub issue description for candidates scoring 50+
+5. **Report** — Produces a scored (0–100) recommendation with evidence, risks, and implementation readiness
+
+The skill ends with the assessment. Issue drafting is reserved for a separate skill.
 
 Step 4 runs in tiers so that cost tracks how promising the repository already looks:
 
@@ -19,11 +20,11 @@ Step 4 runs in tiers so that cost tracks how promising the repository already lo
 |------|------|-----------------|------------------|
 | 0 — synthetic measurement | seconds, no install | always | bundle-size delta, install-footprint delta, empirical `es-toolkit/compat` coverage check |
 | 1 — codemod shape | seconds, no install | Tier 0 says candidate | diff size, the fraction that is one-line import rewrites, every hand fix the codemod cannot do |
-| 2 — full verification | **minutes to an hour** | provisional score ≥ 70, and you intend to propose it | baseline vs migrated build, full test suite, production artifact comparison |
+| 2 — full verification | **minutes to an hour** | provisional score ≥ 70, a named uncertainty that verification can resolve, and the workflow's remaining gates met | baseline vs migrated build, full test suite, production artifact comparison |
 
-**Tier 2 is the expensive one, and most runs must never reach it.** Verifying a migration you are about to argue against costs an hour and buys nothing, so a no-go verdict never earns a Tier 2 run — the gate is a provisional score written down *before* the first `install`. Tiers 0 and 1 alone cap the score at 69: a measured benefit plus a mechanical diff is still an untested change, and the issue draft says exactly that.
+**Tier 2 is the expensive one, and most runs must never reach it.** A no-go verdict does not earn a Tier 2 run — the gate is a provisional score written down *before* the first `install`. Run Tier 2 when its gates and environment permit. Tiers 0–1 normally cap the final score at 69; a strong, evidenced benefit can qualify for 70–79 when verification cannot be completed, with implementation readiness explicitly marked as pending. This exception does not justify skipping available verification.
 
-Steps 3–6 are skipped entirely when Step 2 terminates. A repository with no migration rationale gets a two-minute answer, not an hour of organizational research.
+When Step 2 terminates, skip further investigation and record the no-go score in the five-step report. A repository with no migration rationale gets a short answer without organizational research.
 
 ## Installation
 
@@ -138,19 +139,27 @@ python scripts/migrate_lodash_imports.py /path/to/repo --write
 
 Handles ES module imports, CommonJS requires, subpath imports, namespace imports, per-method packages (`lodash.throttle`, `lodash.mergewith`), and `lodash-es`. Local bindings are preserved (`import _get from 'lodash/get'` → `import { get as _get } from 'es-toolkit/compat'`). Skips files importing hard-blocker functions (`sortedUniq`, `sortedUniqBy`, `mixin`, `noConflict`, `runInContext`) or using `lodash/fp`.
 
-> A clean dry-run is **not** verification — it counts import statements without executing anything. Import-shape errors in migrated code fail silently at runtime, not at import time. Always follow `--write` with a test run.
+> A clean dry-run is **not** verification — it counts import statements without executing anything. Follow `--write` with the gated Tier 2 checks before claiming the migration works; a Tier 1 assessment must say verification is pending.
 
 ## Score Bands
 
 | Score | Meaning |
 |-------|---------|
-| 0–29 | Hard blocker; lodash never reaches end users; the benefit does not apply; or the net size effect is a regression |
-| 30–49 | Technically possible but major organizational barriers or very large scope |
-| 50–69 | Feasible, with a measured benefit that reaches someone — but stopped at Tier 1, so untested |
-| 70–89 | Good conditions, a measured benefit, and a green Tier 2 |
+| 0–29 | Hard blocker; no applicable benefit; or a net regression in the claimed size benefit |
+| 30–49 | No persuasive net benefit, or unresolved evidence against the migration |
+| 50–69 | Some benefit, but insufficient evidence or benefit relative to remaining work |
+| 70–89 | A defensible benefit worth pursuing; green Tier 2, or the strong-benefit exception at 70–79 |
 | 90–100 | Excellent — narrow scope, active repo, Tier 2 green including a production build, minimal risk |
 
-70+ requires a completed Tier 2; Tiers 0–1 cap at 69 however clean the code looks. A green Tier 2 run proves the migration is *safe*, not that it is *worth doing* — when the benefit reaches nobody (a Node-only project that is never bundled) or the net size effect is a regression, the score belongs in 0–29 however green the verification. Before citing a number as an upside, name who collects it.
+The score reflects whether the migration is worth pursuing, separately from whether it is ready to merge. A large diff, feasible manual rewrites, or an uncertain maintainer response alone should not force a clearly worthwhile migration below 70.
+
+The **strong-benefit exception** requires all four: a confirmed beneficiary and concrete gain; a repository-specific case supported by measurements or substantial, source-confirmed maintenance savings; a credible path through the remaining work; and no overriding negative evidence. Generic es-toolkit advantages or hope that a PR will be accepted do not qualify.
+
+For qualifying cases, restore **5–10 points** deducted for implementation or review friction, once and never more than those deductions. This is not an automatic score floor or a duplicate benefit bonus. Without green Tier 2, qualifying scores remain capped at **79** and must say **“Recommended — implementation verification pending.”** Scores of 80+ require green Tier 2, and 90+ also require a production build and minimal risk.
+
+Hard blockers, actual behavioral regressions, an upper-bound-only size argument, and unanswered technical objections remain disqualifying for the exception. A net regression in the claimed size benefit caps at 29; an upper-bound-only size rationale or behavioral regression caps below 50. A green suite supplies verification, not a benefit. Name the users collecting a saving or the maintainers whose concrete work disappears, and account for install growth explicitly.
+
+The complete bases, adjustments, and exception conditions are maintained in the [shared workflow](.claude/commands/can-migrate-es-toolkit.md).
 
 ## Requirements
 

@@ -257,14 +257,6 @@ after migration                 →   29,840,682 B  (28.5 MB, +14.9%)
 
 **Recommendation: do not open an issue or PR.** The maintainers have answered this question, their answer was technically right, and the facts have moved further in their favor.
 
----
-
-## Stage 6 — Draft Issue
-
-**Not produced.** Score 15 < 70, and the "still has merit" exception does not apply.
-
-The skill's Stage 6 exists to write a proposal a maintainer would be glad to receive. Here, the maintainers already received it, evaluated it in under 24 hours, and explained precisely why they said no — and the strongest counter-evidence available (the size measurements above) supports *their* position, not the proposal's. Re-filing it would be re-litigating a settled, correctly-decided question.
-
 ### If circumstances change
 
 This verdict is a function of es-toolkit's install footprint, not of anything about Metro. It would be worth revisiting if:
